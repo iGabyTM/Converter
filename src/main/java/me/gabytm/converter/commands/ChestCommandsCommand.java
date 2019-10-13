@@ -21,10 +21,7 @@ package me.gabytm.converter.commands;
 
 import me.gabytm.converter.Converter;
 import me.gabytm.converter.utils.Messages;
-import me.mattstudios.mf.annotations.Alias;
-import me.mattstudios.mf.annotations.Command;
-import me.mattstudios.mf.annotations.Completion;
-import me.mattstudios.mf.annotations.SubCommand;
+import me.mattstudios.mf.annotations.*;
 import me.mattstudios.mf.base.CommandBase;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.ConfigurationSection;
@@ -35,569 +32,305 @@ import java.io.File;
 import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.List;
+import java.util.regex.Matcher;
+import java.util.regex.Pattern;
 
 @Command("convert")
 public class ChestCommandsCommand extends CommandBase {
     private Converter plugin;
+    private Pattern matDataAmtPattern = Pattern.compile("([\\w\\s]+):([0-9\\s]+),([0-9\\s]+)");
+    private Pattern matAmtPattern = Pattern.compile("([\\w\\s]+),([0-9\\s]+)");
+    private Pattern matDataPattern = Pattern.compile("([\\w\\s]+):([0-9\\s]+)");
 
     public ChestCommandsCommand(Converter plugin) { this.plugin = plugin; }
 
+    @SuppressWarnings("Duplicates")
     @SubCommand("chestcommands")
     @Alias("cc")
-    public void onCommand(CommandSender sender, String[] args) {
-        if (sender.hasPermission("convertor.access")) {
+    @Permission("convertor.access")
+    public void onCommand(CommandSender sender, String pluginTo, String menu) {
+        FileConfiguration config = plugin.getConfig();
 
-            FileConfiguration config = plugin.getConfig();
+        if (pluginTo.equalsIgnoreCase("DeluxeMenus") || pluginTo.equalsIgnoreCase("DM")) {
+            String menuName = menu.toLowerCase().endsWith(".yml") ? menu : menu + ".yml";
+            long startTime = System.currentTimeMillis();
+            FileConfiguration ccConfig = YamlConfiguration.loadConfiguration(new File("plugins/ChestCommands/menu/" + menuName));
 
-            if (args.length >= 2) {
-                if (args[1].equalsIgnoreCase("DeluxeMenus") || args[1].equalsIgnoreCase("DM")) {
-                    if (args.length >= 3) {
-                        String menuName = args[2].toLowerCase().endsWith(".yml") ? args[2] : args[2] + ".yml";
-                        long startTime = System.currentTimeMillis();
-                        FileConfiguration ccConfig = YamlConfiguration.loadConfiguration(new File("plugins/ChestCommands/menu/" + menuName));
+            if (ccConfig.isConfigurationSection("menu-settings")) {
+                try {
+                    for (String key : plugin.getConfig().getKeys(false)) {
+                        plugin.getConfig().set(key, null);
+                    }
 
-                        if (ccConfig.isConfigurationSection("menu-settings")) {
-                            try {
-                                for (String key : plugin.getConfig().getKeys(false)) {
-                                    plugin.getConfig().set(key, null);
-                                }
+                    plugin.saveConfig();
+                    config.set("menu_title", formatText(ccConfig.getString("menu-settings.name", "Menu " + menuName)));
 
-                                plugin.saveConfig();
-                                config.set("menu_title", formatText(ccConfig.getString("menu-settings.name", "Menu " + menuName)));
+                    if (ccConfig.isSet("menu-settings.command")) {
+                        if (ccConfig.getString("menu-settings.command").contains(";")) {
+                            List<String> open_command = new ArrayList<>(Arrays.asList(ccConfig.getString("menu-settings.command").split(";")));
 
-                                if (ccConfig.isSet("menu-settings.command")) {
-                                    if (ccConfig.getString("menu-settings.command").contains(";")) {
-                                        List<String> open_command = new ArrayList<>(Arrays.asList(ccConfig.getString("menu-settings.command").split(";")));
+                            config.set("open_command", open_command);
+                        } else {
+                            config.set("open_command", ccConfig.getString("menu-settings.command", menuName.replace(".yml", "") + "gui"));
+                        }
+                    } else {
+                        config.set("open_command", menuName.replace(".yml", "") + "gui");
+                    }
 
-                                        config.set("open_command", open_command);
-                                    } else {
-                                        config.set("open_command", ccConfig.getString("menu-settings.command", menuName.replace(".yml", "") + "gui"));
-                                    }
-                                } else {
-                                    config.set("open_command", menuName.replace(".yml", "") + "gui");
-                                }
+                    if (ccConfig.isSet("menu-settings.open-action")) {
+                        List<String> open_commands = new ArrayList<>();
 
-                                if (ccConfig.isSet("menu-settings.open-action")) {
-                                    List<String> open_commands = new ArrayList<>();
-
-                                    if (ccConfig.getString("menu-settings.open-action").contains(";")) {
-                                        for (String cmd : ccConfig.getString("menu-settings.open-action").split(";")) {
-                                            open_commands.add(dmActions(cmd));
-                                        }
-                                    } else {
-                                        open_commands.add(dmActions(ccConfig.getString("menu-settings.open-action")));
-                                    }
-
-                                    config.set("open_commands", open_commands);
-                                }
-
-                                config.set("size", ccConfig.getInt("menu-settings.rows", 6) * 9);
-
-                                if (ccConfig.isSet("menu-settings.auto-refresh")) {
-                                    config.set("update_interval", ccConfig.getInt("menu-settings.auto-refresh"));
-                                }
-
-                                config.createSection("items");
-
-                                for (String configSection : ccConfig.getKeys(false)) {
-                                    if (ccConfig.isConfigurationSection(configSection) && !ccConfig.getConfigurationSection(configSection).getName().equals("menu-settings")) {
-                                        ConfigurationSection cs = ccConfig.getConfigurationSection(configSection);
-                                        String key = cs.getName();
-
-                                        config.createSection("items." + key);
-
-                                        if (cs.isSet("ID")) {
-                                            if (cs.getString("ID").contains(":") && cs.getString("ID").contains(",")) {
-                                                String material = cs.getString("ID").split(":")[0];
-                                                int data = Integer.parseInt(cs.getString("ID").split(",")[0].replace(material + ":", "").replaceAll(" ", ""));
-                                                int amount = Integer.parseInt(cs.getString("ID").split(",")[1].replaceAll(" ", ""));
-
-                                                config.set("items." + key + ".material", material.replaceAll(" ", "_").toUpperCase());
-                                                config.set("items." + key + ".data", data);
-                                                config.set("items." + key + ".amount", amount);
-                                            } else if (cs.getString("ID").contains(",")) {
-                                                String material = cs.getString("ID").split(",")[0];
-                                                int amount = Integer.parseInt(cs.getString("ID").split(",")[1].replaceAll(" ", ""));
-
-                                                config.set("items." + key + ".material", material.replaceAll(" ", "_").toUpperCase());
-                                                config.set("items." + key + ".amount", amount);
-                                            } else if (cs.getString("ID").contains(":")) {
-                                                String material = cs.getString("ID").split(":")[0];
-                                                int data = Integer.parseInt(cs.getString("ID").split(":")[1].replaceAll(" ", ""));
-
-                                                config.set("items." + key + ".material", material.replaceAll(" ", "_").toUpperCase());
-                                                config.set("items." + key + ".data", data);
-                                            } else {
-                                                String material = cs.getString("ID");
-
-                                                config.set("items." + key + ".material", material.replaceAll(" ", "_").toUpperCase());
-                                            }
-                                        }
-
-                                        if (cs.isSet("DATA-VALUE")) {
-                                            config.set("items." + key + ".data", cs.getInt("DATA-VALUE"));
-                                        }
-
-                                        if (cs.isSet("AMOUNT")) {
-                                            config.set("items." + key + ".amount", cs.getInt("AMOUNT"));
-                                        }
-
-                                        if (cs.isSet("SKULL-OWNER")) {
-                                            config.set("items." + key + ".material", "head;" + cs.getString("SKULL-OWNER"));
-                                            config.set("items." + key + ".data", null);
-                                        }
-
-                                        if (cs.isSet("COLOR")) {
-                                            config.set("items." + key + ".color", cs.getString("COLOR").replaceAll(" ", ""));
-                                        }
-
-                                        if (cs.isSet("POSITION-X") && cs.isSet("POSITION-Y")) {
-                                            config.set("items." + key + ".slot", dmSlot(cs.getInt("POSITION-X"), cs.getInt("POSITION-Y")));
-                                        }
-
-                                        if (cs.isSet("VIEW_PERMISSION")) {
-                                            config.set("items." + key + ".priority", 1);
-                                            config.set("items." + key + ".view_requirement.requirements.permission.type", "has permission");
-                                            config.set("items." + key + ".view_requirement.requirements.permission.permission", cs.get("VIEW-PERMISSION"));
-                                        }
-
-                                        if (cs.isSet("NAME")) {
-                                            config.set("items." + key + ".display_name", formatText(cs.getString("NAME")));
-                                        }
-
-                                        if (cs.isSet("LORE")) {
-                                            List<String> lore = new ArrayList<>();
-
-                                            for (String line : cs.getStringList("LORE")) {
-                                                lore.add(formatText(line));
-                                            }
-
-                                            config.set("items." + key + ".lore", lore);
-                                        }
-
-                                        if (cs.isSet("ENCHANTMENT")) {
-                                            ArrayList<String> enchantments = new ArrayList<>();
-
-                                            if (cs.getString("ENCHANTMENT").contains(";") && cs.getString("ENCHANTMENT").contains(",")) {
-                                                for (String e : cs.getString("ENCHANTMENT").split(";")) {
-                                                    String[] enchantment = e.split(",");
-
-                                                    enchantments.add(enchantment[0] + ";" + enchantment[1].replaceAll(" ", ""));
-                                                }
-                                            } else if (cs.getString("ENCHANTMENT").contains(",")) {
-                                                String[] enchantment = cs.getString("ENCHANTMENT").split(",");
-
-                                                enchantments.add(enchantment[0] + ";" + enchantment[1].replaceAll(" ", ""));
-                                            } else {
-                                                enchantments.add(cs.getString("ENCHANTMENT") + ";" + 1);
-                                            }
-
-                                            config.set("items." + key + ".enchantments", enchantments);
-                                        }
-
-                                        ArrayList<String> left_click_commands = new ArrayList<>();
-                                        ArrayList<String> right_click_commands = new ArrayList<>();
-
-                                        if (cs.isSet("COMMAND")) {
-                                            if (cs.getString("COMMAND").contains(";")) {
-                                                for (String cmd : cs.getString("COMMAND").split(";")) {
-                                                    left_click_commands.add(dmActions(cmd));
-                                                    right_click_commands.add(dmActions(cmd));
-                                                }
-                                            } else {
-                                                left_click_commands.add(dmActions(cs.getString("COMMAND")));
-                                                right_click_commands.add(dmActions(cs.getString("COMMAND")));
-                                            }
-
-                                            config.set("items." + key + ".left_click_commands", left_click_commands);
-                                            config.set("items." + key + ".right_click_commands", right_click_commands);
-                                        }
-
-                                        if (cs.isSet("LEVELS")) {
-                                            left_click_commands.add("[console] exp give -" + cs.getInt("LEVELS") + "L %player_name% ");
-                                            right_click_commands.add("[console] exp give -" + cs.getInt("LEVELS") + "L %player_name% ");
-
-                                            config.set("items." + key + ".left_click_requirement.requirements.levels.type", ">=");
-                                            config.set("items." + key + ".left_click_requirement.requirements.levels.input", "%player_level%");
-                                            config.set("items." + key + ".left_click_requirement.requirements.levels.output", cs.getInt("LEVELS"));
-                                            config.set("items." + key + ".right_click_requirement.requirements.levels.type", ">=");
-                                            config.set("items." + key + ".right_click_requirement.requirements.levels.input", "%player_level%");
-                                            config.set("items." + key + ".right_click_requirement.requirements.levels.output", cs.getInt("LEVELS"));
-                                            config.set("items." + key + ".left_click_commands", left_click_commands);
-                                            config.set("items." + key + ".right_click_commands", right_click_commands);
-                                        }
-
-                                        if (cs.isSet("PERMISSION")) {
-                                            config.set("items." + key + ".left_click_requirement.requirements.permission.type", "has permission");
-                                            config.set("items." + key + ".left_click_requirement.requirements.permission.permission", cs.getString("PERMISSION"));
-                                            config.set("items." + key + ".right_click_requirement.requirements.permission.type", "has permission");
-                                            config.set("items." + key + ".right_click_requirement.requirements.permission.permission", cs.getString("PERMISSION"));
-                                        }
-
-                                        if (cs.isSet("PRICE")) {
-                                            left_click_commands.add("[console] eco take %player_name% " + cs.getInt("PRICE"));
-                                            right_click_commands.add("[console] eco take %player_name% " + cs.getInt("PRICE"));
-
-                                            config.set("items." + key + ".left_click_requirement.requirements.money.type", "has money");
-                                            config.set("items." + key + ".left_click_requirement.requirements.money.amount", cs.getInt("PRICE"));
-                                            config.set("items." + key + ".right_click_requirement.requirements.money.type", "has money");
-                                            config.set("items." + key + ".right_click_requirement.requirements.money.amount", cs.getInt("PRICE"));
-                                            config.set("items." + key + ".left_click_commands", left_click_commands);
-                                            config.set("items." + key + ".right_click_commands", right_click_commands);
-                                        }
-
-                                        if (!cs.isSet("KEEP-OPEN") || !cs.getBoolean("KEEP-OPEN")) {
-                                            left_click_commands.add("[close]");
-                                            right_click_commands.add("[close]");
-
-                                            config.set("items." + key + ".left_click_commands", left_click_commands);
-                                            config.set("items." + key + ".right_click_commands", right_click_commands);
-                                        }
-
-                                        if (cs.isSet("REQUIRED-ITEM")) {
-                                            if (cs.getString("REQUIRED-ITEM").contains(":") && cs.getString("REQUIRED-ITEM").contains(",")) {
-                                                String material = cs.getString("REQUIRED-ITEM").split(":")[0];
-                                                int data = Integer.parseInt(cs.getString("REQUIRED-ITEM").split(",")[0].replace(material + ":", "").replaceAll(" ", ""));
-                                                int amount = Integer.parseInt(cs.getString("REQUIRED-ITEM").split(",")[1].replaceAll(" ", ""));
-
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",amt:" + amount + ",data:" + data + "%");
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",amt:" + amount + ",data:" + data + "%");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
-                                            } else if (cs.getString("REQUIRED-ITEM").contains(",")) {
-                                                String material = cs.getString("REQUIRED-ITEM").split(",")[0];
-                                                int amount = Integer.parseInt(cs.getString("REQUIRED-ITEM").split(",")[1].replaceAll(" ", ""));
-
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",amt:" + amount + "%");
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",amt:" + amount + "%");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
-                                            } else if (cs.getString("REQUIRED-ITEM").contains(":")) {
-                                                String material = cs.getString("REQUIRED-ITEM").split(":")[0];
-                                                int data = Integer.parseInt(cs.getString("REQUIRED-ITEM").split(":")[1].replaceAll(" ", ""));
-
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",data:" + data + "%");
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",data:" + data + "%");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
-                                            } else {
-                                                String material = cs.getString("REQUIRED-ITEM");
-
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + "%");
-                                                config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + "%");
-                                                config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
-                                            }
-                                        }
-
-                                        if (cs.isSet("PERMISSION-MESSAGE")) {
-                                            ArrayList<String> left_deny_commands = new ArrayList<>();
-                                            ArrayList<String> right_deny_commands = new ArrayList<>();
-
-                                            left_deny_commands.add("[message] " + formatText(cs.getString("PERMISSION-MESSAGE")));
-                                            right_deny_commands.add("[message] " + formatText(cs.getString("PERMISSION-MESSAGE")));
-
-                                            config.set("items." + key + ".left_click_requirement.deny_commands", left_deny_commands);
-                                            config.set("items." + key + ".right_click_requirement.deny_commands", right_deny_commands);
-                                        }
-                                    }
-                                }
-
-                                plugin.saveConfig();
-                                sender.sendMessage(Messages.CONVERTION_DONE.format(System.currentTimeMillis() - startTime));
-                            } catch (Exception e) {
-                                e.printStackTrace();
-                                sender.sendMessage(Messages.CONVERTION_ERROR.value());
+                        if (ccConfig.getString("menu-settings.open-action").contains(";")) {
+                            for (String cmd : ccConfig.getString("menu-settings.open-action").split(";")) {
+                                open_commands.add(dmActions(cmd));
                             }
                         } else {
-                            sender.sendMessage(Messages.CHESTCOMMANDS_MENU_NOT_FOUND.ccFormat(menuName));
+                            open_commands.add(dmActions(ccConfig.getString("menu-settings.open-action")));
                         }
-                    } else {
-                        sender.sendMessage(Messages.CHESTCOMMANDS_DELUXEMENUS_USAGE.value());
+
+                        config.set("open_commands", open_commands);
                     }
-                } else {
-                    sender.sendMessage(Messages.UNKNOWN_COMMAND.value());
+
+                    config.set("size", ccConfig.getInt("menu-settings.rows", 6) * 9);
+
+                    if (ccConfig.isSet("menu-settings.auto-refresh")) config.set("update_interval", ccConfig.getInt("menu-settings.auto-refresh"));
+
+                    config.createSection("items");
+
+                    for (String configSection : ccConfig.getKeys(false)) {
+                        if (ccConfig.isConfigurationSection(configSection) && !ccConfig.getConfigurationSection(configSection).getName().equals("menu-settings")) {
+                            ConfigurationSection cs = ccConfig.getConfigurationSection(configSection);
+                            String key = cs.getName();
+
+                            config.createSection("items." + key);
+
+                            if (cs.isSet("ID")) {
+                                String id = cs.getString("ID");
+                                Matcher matDataAmtMatcher = matDataAmtPattern.matcher(id);
+                                Matcher matAmtMatcher = matAmtPattern.matcher(id);
+                                Matcher matDataMatcher = matDataPattern.matcher(id);
+
+                                if (matDataAmtMatcher.find()) {
+                                    String material = matDataAmtMatcher.group(1).toUpperCase().replaceAll(" ", "_");
+                                    int data = Integer.parseInt(matDataAmtMatcher.group(2).trim());
+                                    int amount = Integer.parseInt(matDataAmtMatcher.group(3).trim());
+
+                                    config.set("items." + key + ".material", material);
+                                    config.set("items." + key + ".data", data);
+                                    config.set("items." + key + ".amount", amount);
+                                } else if (matAmtMatcher.find()) {
+                                    String material = matAmtMatcher.group(1).toUpperCase().replaceAll(" ", "_");
+                                    int amount = Integer.parseInt(matAmtMatcher.group(2).trim());
+
+                                    config.set("items." + key + ".material", material);
+                                    config.set("items." + key + ".amount", amount);
+                                } else if (matDataMatcher.find()) {
+                                    String material = matDataMatcher.group(1).toUpperCase().replaceAll(" ", "_");
+                                    int data = Integer.parseInt(matDataMatcher.group(2).trim());
+
+                                    config.set("items." + key + ".material", material);
+                                    config.set("items." + key + ".data", data);
+                                } else {
+                                    config.set("items." + key + ".material", id.replaceAll(" ", "_").toUpperCase());
+                                }
+                            }
+
+                            if (cs.isSet("DATA-VALUE")) config.set("items." + key + ".data", cs.getInt("DATA-VALUE"));
+
+                            if (cs.isSet("AMOUNT")) config.set("items." + key + ".amount", cs.getInt("AMOUNT"));
+
+                            if (cs.isSet("SKULL-OWNER")) {
+                                config.set("items." + key + ".material", "head;" + cs.getString("SKULL-OWNER"));
+                                config.set("items." + key + ".data", null);
+                            }
+
+                            if (cs.isSet("COLOR")) config.set("items." + key + ".color", cs.getString("COLOR").replaceAll(" ", ""));
+
+                            if (cs.isSet("POSITION-X") && cs.isSet("POSITION-Y")) config.set("items." + key + ".slot", dmSlot(cs.getInt("POSITION-X"), cs.getInt("POSITION-Y")));
+
+                            if (cs.isSet("VIEW_PERMISSION")) {
+                                config.set("items." + key + ".priority", 1);
+                                config.set("items." + key + ".view_requirement.requirements.permission.type", "has permission");
+                                config.set("items." + key + ".view_requirement.requirements.permission.permission", cs.get("VIEW-PERMISSION"));
+                            }
+
+                            if (cs.isSet("NAME")) config.set("items." + key + ".display_name", formatText(cs.getString("NAME")));
+
+                            if (cs.isSet("LORE")) {
+                                List<String> lore = new ArrayList<>();
+
+                                for (String line : cs.getStringList("LORE")) {
+                                    lore.add(formatText(line));
+                                }
+
+                                config.set("items." + key + ".lore", lore);
+                            }
+
+                            if (cs.isSet("ENCHANTMENT")) {
+                                ArrayList<String> enchantments = new ArrayList<>();
+
+                                if (cs.getString("ENCHANTMENT").contains(";") && cs.getString("ENCHANTMENT").contains(",")) {
+                                    for (String e : cs.getString("ENCHANTMENT").split(";")) {
+                                        String[] enchantment = e.split(",");
+
+                                        enchantments.add(enchantment[0] + ";" + enchantment[1].replaceAll(" ", ""));
+                                    }
+                                } else if (cs.getString("ENCHANTMENT").contains(",")) {
+                                    String[] enchantment = cs.getString("ENCHANTMENT").split(",");
+
+                                    enchantments.add(enchantment[0] + ";" + enchantment[1].replaceAll(" ", ""));
+                                } else {
+                                    enchantments.add(cs.getString("ENCHANTMENT") + ";" + 1);
+                                }
+
+                                config.set("items." + key + ".enchantments", enchantments);
+                            }
+
+                            ArrayList<String> left_click_commands = new ArrayList<>();
+                            ArrayList<String> right_click_commands = new ArrayList<>();
+
+                            if (cs.isSet("COMMAND")) {
+                                if (cs.getString("COMMAND").contains(";")) {
+                                    for (String cmd : cs.getString("COMMAND").split(";")) {
+                                        left_click_commands.add(dmActions(cmd));
+                                        right_click_commands.add(dmActions(cmd));
+                                    }
+                                } else {
+                                    String command = cs.getString("COMMAND");
+
+                                    left_click_commands.add(dmActions(command));
+                                    right_click_commands.add(dmActions(command));
+                                }
+
+                                config.set("items." + key + ".left_click_commands", left_click_commands);
+                                config.set("items." + key + ".right_click_commands", right_click_commands);
+                            }
+
+                            if (cs.isSet("LEVELS")) {
+                                int levels = cs.getInt("LEVELS");
+
+                                left_click_commands.add("[console] exp give -" + levels + "L %player_name% ");
+                                right_click_commands.add("[console] exp give -" + levels + "L %player_name% ");
+
+                                config.set("items." + key + ".left_click_requirement.requirements.levels.type", ">=");
+                                config.set("items." + key + ".left_click_requirement.requirements.levels.input", "%player_level%");
+                                config.set("items." + key + ".left_click_requirement.requirements.levels.output", levels);
+                                config.set("items." + key + ".right_click_requirement.requirements.levels.type", ">=");
+                                config.set("items." + key + ".right_click_requirement.requirements.levels.input", "%player_level%");
+                                config.set("items." + key + ".right_click_requirement.requirements.levels.output", levels);
+                                config.set("items." + key + ".left_click_commands", left_click_commands);
+                                config.set("items." + key + ".right_click_commands", right_click_commands);
+                            }
+
+                            if (cs.isSet("PERMISSION")) {
+                                String permission = cs.getString("PERMISSION");
+
+                                config.set("items." + key + ".left_click_requirement.requirements.permission.type", "has permission");
+                                config.set("items." + key + ".left_click_requirement.requirements.permission.permission", permission);
+                                config.set("items." + key + ".right_click_requirement.requirements.permission.type", "has permission");
+                                config.set("items." + key + ".right_click_requirement.requirements.permission.permission", permission);
+                            }
+
+                            if (cs.isSet("PRICE")) {
+                                int price = cs.getInt("PRICE");
+
+                                left_click_commands.add("[console] eco take %player_name% " + price);
+                                right_click_commands.add("[console] eco take %player_name% " + price);
+
+                                config.set("items." + key + ".left_click_requirement.requirements.money.type", "has money");
+                                config.set("items." + key + ".left_click_requirement.requirements.money.amount", price);
+                                config.set("items." + key + ".right_click_requirement.requirements.money.type", "has money");
+                                config.set("items." + key + ".right_click_requirement.requirements.money.amount", price);
+                                config.set("items." + key + ".left_click_commands", left_click_commands);
+                                config.set("items." + key + ".right_click_commands", right_click_commands);
+                            }
+
+                            if (!cs.isSet("KEEP-OPEN") || !cs.getBoolean("KEEP-OPEN")) {
+                                left_click_commands.add("[close]");
+                                right_click_commands.add("[close]");
+
+                                config.set("items." + key + ".left_click_commands", left_click_commands);
+                                config.set("items." + key + ".right_click_commands", right_click_commands);
+                            }
+
+                            if (cs.isSet("REQUIRED-ITEM")) {
+                                String requiredItem = cs.getString("REQUIRED-ITEM");
+                                Matcher matDataAmtMatcher = matDataAmtPattern.matcher(requiredItem);
+                                Matcher matAmtMatcher = matAmtPattern.matcher(requiredItem);
+                                Matcher matDataMatcher = matDataPattern.matcher(requiredItem);
+
+                                if (matDataAmtMatcher.find()) {
+                                    String material = matDataAmtMatcher.group(1).toUpperCase().replaceAll(" ", "_");
+                                    int data = Integer.parseInt(matDataAmtMatcher.group(2).trim());
+                                    int amount = Integer.parseInt(matDataAmtMatcher.group(3).trim());
+                                    StringBuilder input = new StringBuilder().append("%checkitem_mat:").append(material).append(",amt:").append(amount).append(",data:").append(data).append("%");
+
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.input", input.toString());
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.input", input.toString());
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
+                                } else if (matAmtMatcher.find()) {
+                                    String material = matAmtMatcher.group(1).toUpperCase().replaceAll(" ", "_");
+                                    int amount = Integer.parseInt(matAmtMatcher.group(2).trim());
+                                    StringBuilder input = new StringBuilder().append("%checkitem_mat:").append(material).append(",amt:").append(amount).append("%");
+
+                                    System.out.println("matAmtMatcher.toString() = " + matAmtMatcher.toString());
+
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.input", input.toString());
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.input", input.toString());
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
+                                } else if (matDataMatcher.find()) {
+                                    String material = matDataMatcher.group(1).toUpperCase().replaceAll(" ", "_");
+                                    int data = Integer.parseInt(matDataMatcher.group(2).trim());
+                                    StringBuilder input = new StringBuilder().append("%checkitem_mat:").append(material).append(",data:").append(data).append("%");
+
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.input", input.toString());
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.input", input.toString());
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
+                                } else {
+                                    String material = requiredItem.toUpperCase().replaceAll(" ", "_");
+                                    StringBuilder input = new StringBuilder().append("%checkitem_mat:").append(material).append("%");
+
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.input", input.toString());
+                                    config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.input", input.toString());
+                                    config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
+                                }
+                            }
+
+                            if (cs.isSet("PERMISSION-MESSAGE")) {
+                                ArrayList<String> left_deny_commands = new ArrayList<>();
+                                ArrayList<String> right_deny_commands = new ArrayList<>();
+                                String permissionMessage = cs.getString("PERMISSION-MESSAGE");
+
+                                left_deny_commands.add("[message] " + formatText(permissionMessage));
+                                right_deny_commands.add("[message] " + formatText(permissionMessage));
+
+                                config.set("items." + key + ".left_click_requirement.deny_commands", left_deny_commands);
+                                config.set("items." + key + ".right_click_requirement.deny_commands", right_deny_commands);
+                            }
+                        }
+                    }
+
+                    plugin.saveConfig();
+                    sender.sendMessage(Messages.CONVERTION_DONE.format(System.currentTimeMillis() - startTime));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    sender.sendMessage(Messages.CONVERTION_ERROR.value());
                 }
-                 /*if (args[0].equalsIgnoreCase("DeluxeMenus") || args[0].equalsIgnoreCase("DM")) {
-                    String menuName = args[1].toLowerCase().endsWith(".yml") ? args[1] : args[1] + ".yml";
-                    long startTime = System.currentTimeMillis();
-                    FileConfiguration ccConfig = YamlConfiguration.loadConfiguration(new File("plugins/ChestCommands/menu/" + menuName));
-
-                    if (ccConfig.isConfigurationSection("menu-settings")) {
-                        try {
-                            for (String key : plugin.getConfig().getKeys(false)) {
-                                plugin.getConfig().set(key, null);
-                            }
-
-                            plugin.saveConfig();
-                            config.set("menu_title", formatText(ccConfig.getString("menu-settings.name", "Menu " + menuName)));
-
-                            if (ccConfig.isSet("menu-settings.command")) {
-                                if (ccConfig.getString("menu-settings.command").contains(";")) {
-                                    List<String> open_command = new ArrayList<>(Arrays.asList(ccConfig.getString("menu-settings.command").split(";")));
-
-                                    config.set("open_command", open_command);
-                                } else {
-                                    config.set("open_command", ccConfig.getString("menu-settings.command", "SOME_OPEN_COMMAND"));
-                                }
-                            }
-
-                            if (ccConfig.isSet("menu-settings.open-action")) {
-                                List<String> open_commands = new ArrayList<>();
-
-                                if (ccConfig.getString("menu-settings.open-action").contains(";")) {
-                                    for (String cmd : ccConfig.getString("menu-settings.open-action").split(";")) {
-                                        open_commands.add(dmActions(cmd));
-                                    }
-                                } else {
-                                    open_commands.add(dmActions(ccConfig.getString("menu-settings.open-action")));
-                                }
-
-                                config.set("open_commands", open_commands);
-                            }
-
-                            config.set("size", ccConfig.getInt("menu-settings.rows", 6) * 9);
-
-                            if (ccConfig.isSet("menu-settings.auto-refresh")) {
-                                config.set("update_interval", ccConfig.getInt("menu-settings.auto-refresh"));
-                            }
-
-                            config.createSection("items");
-
-                            for (String configSection : ccConfig.getKeys(false)) {
-                                if (ccConfig.isConfigurationSection(configSection) && !ccConfig.getConfigurationSection(configSection).getName().equals("menu-settings")) {
-                                    ConfigurationSection cs = ccConfig.getConfigurationSection(configSection);
-                                    String key = cs.getName();
-
-                                    config.createSection("items." + key);
-
-                                    if (cs.isSet("ID")) {
-                                        if (cs.getString("ID").contains(":") && cs.getString("ID").contains(",")) {
-                                            String material = cs.getString("ID").split(":")[0];
-                                            int data = Integer.parseInt(cs.getString("ID").split(",")[0].replace(material + ":", "").replaceAll(" ", ""));
-                                            int amount = Integer.parseInt(cs.getString("ID").split(",")[1].replaceAll(" ", ""));
-
-                                            config.set("items." + key + ".material", material.replaceAll(" ", "_").toUpperCase());
-                                            config.set("items." + key + ".data", data);
-                                            config.set("items." + key + ".amount", amount);
-                                        } else if (cs.getString("ID").contains(",")) {
-                                            String material = cs.getString("ID").split(",")[0];
-                                            int amount = Integer.parseInt(cs.getString("ID").split(",")[1].replaceAll(" ", ""));
-
-                                            config.set("items." + key + ".material", material.replaceAll(" ", "_").toUpperCase());
-                                            config.set("items." + key + ".amount", amount);
-                                        } else if (cs.getString("ID").contains(":")) {
-                                            String material = cs.getString("ID").split(":")[0];
-                                            int data = Integer.parseInt(cs.getString("ID").split(":")[1].replaceAll(" ", ""));
-
-                                            config.set("items." + key + ".material", material.replaceAll(" ", "_").toUpperCase());
-                                            config.set("items." + key + ".data", data);
-                                        } else {
-                                            String material = cs.getString("ID");
-
-                                            config.set("items." + key + ".material", material.replaceAll(" ", "_").toUpperCase());
-                                        }
-                                    }
-
-                                    if (cs.isSet("DATA-VALUE")) {
-                                        config.set("items." + key + ".data", cs.getInt("DATA-VALUE"));
-                                    }
-
-                                    if (cs.isSet("AMOUNT")) {
-                                        config.set("items." + key + ".amount", cs.getInt("AMOUNT"));
-                                    }
-
-                                    if (cs.isSet("SKULL-OWNER")) {
-                                        config.set("items." + key + ".material", "head;" + cs.getString("SKULL-OWNER"));
-                                        config.set("items." + key + ".data", null);
-                                    }
-
-                                    if (cs.isSet("COLOR")) {
-                                        config.set("items." + key + ".color", cs.getString("COLOR").replaceAll(" ", ""));
-                                    }
-
-                                    if (cs.isSet("POSITION-X") && cs.isSet("POSITION-Y")) {
-                                        config.set("items." + key + ".slot", dmSlot(cs.getInt("POSITION-X"), cs.getInt("POSITION-Y")));
-                                    }
-
-                                    if (cs.isSet("VIEW_PERMISSION")) {
-                                        config.set("items." + key + ".priority", 1);
-                                        config.set("items." + key + ".view_requirement.requirements.permission.type", "has permission");
-                                        config.set("items." + key + ".view_requirement.requirements.permission.permission", cs.get("VIEW-PERMISSION"));
-                                    }
-
-                                    if (cs.isSet("NAME")) {
-                                        config.set("items." + key + ".display_name", formatText(cs.getString("NAME")));
-                                    }
-
-                                    if (cs.isSet("LORE")) {
-                                        List<String> lore = new ArrayList<>();
-
-                                        for (String line : cs.getStringList("LORE")) {
-                                            lore.add(formatText(line));
-                                        }
-
-                                        config.set("items." + key + ".lore", lore);
-                                    }
-
-                                    if (cs.isSet("ENCHANTMENT")) {
-                                        ArrayList<String> enchantments = new ArrayList<>();
-
-                                        if (cs.getString("ENCHANTMENT").contains(";") && cs.getString("ENCHANTMENT").contains(",")) {
-                                            for (String e : cs.getString("ENCHANTMENT").split(";")) {
-                                                String[] enchantment = e.split(",");
-
-                                                enchantments.add(enchantment[0] + ";" + enchantment[1].replaceAll(" ", ""));
-                                            }
-                                        } else if (cs.getString("ENCHANTMENT").contains(",")) {
-                                            String[] enchantment = cs.getString("ENCHANTMENT").split(",");
-
-                                            enchantments.add(enchantment[0] + ";" + enchantment[1].replaceAll(" ", ""));
-                                        } else {
-                                            enchantments.add(cs.getString("ENCHANTMENT") + ";" + 1);
-                                        }
-
-                                        config.set("items." + key + ".enchantments", enchantments);
-                                    }
-
-                                    ArrayList<String> left_click_commands = new ArrayList<>();
-                                    ArrayList<String> right_click_commands = new ArrayList<>();
-
-                                    if (cs.isSet("COMMAND")) {
-                                        if (cs.getString("COMMAND").contains(";")) {
-                                            for (String cmd : cs.getString("COMMAND").split(";")) {
-                                                left_click_commands.add(dmActions(cmd));
-                                                right_click_commands.add(dmActions(cmd));
-                                            }
-                                        } else {
-                                            left_click_commands.add(dmActions(cs.getString("COMMAND")));
-                                            right_click_commands.add(dmActions(cs.getString("COMMAND")));
-                                        }
-
-                                        config.set("items." + key + ".left_click_commands", left_click_commands);
-                                        config.set("items." + key + ".right_click_commands", right_click_commands);
-                                    }
-
-                                    if (cs.isSet("LEVELS")) {
-                                        left_click_commands.add("[console] exp give -" + cs.getInt("LEVELS") + "L %player_name% ");
-                                        right_click_commands.add("[console] exp give -" + cs.getInt("LEVELS") + "L %player_name% ");
-
-                                        config.set("items." + key + ".left_click_requirement.requirements.levels.type", ">=");
-                                        config.set("items." + key + ".left_click_requirement.requirements.levels.input", "%player_level%");
-                                        config.set("items." + key + ".left_click_requirement.requirements.levels.output", cs.getInt("LEVELS"));
-                                        config.set("items." + key + ".right_click_requirement.requirements.levels.type", ">=");
-                                        config.set("items." + key + ".right_click_requirement.requirements.levels.input", "%player_level%");
-                                        config.set("items." + key + ".right_click_requirement.requirements.levels.output", cs.getInt("LEVELS"));
-                                        config.set("items." + key + ".left_click_commands", left_click_commands);
-                                        config.set("items." + key + ".right_click_commands", right_click_commands);
-                                    }
-
-                                    if (cs.isSet("PERMISSION")) {
-                                        config.set("items." + key + ".left_click_requirement.requirements.permission.type", "has permission");
-                                        config.set("items." + key + ".left_click_requirement.requirements.permission.permission", cs.getString("PERMISSION"));
-                                        config.set("items." + key + ".right_click_requirement.requirements.permission.type", "has permission");
-                                        config.set("items." + key + ".right_click_requirement.requirements.permission.permission", cs.getString("PERMISSION"));
-                                    }
-
-                                    if (cs.isSet("PRICE")) {
-                                        left_click_commands.add("[console] eco take %player_name% " + cs.getInt("PRICE"));
-                                        right_click_commands.add("[console] eco take %player_name% " + cs.getInt("PRICE"));
-
-                                        config.set("items." + key + ".left_click_requirement.requirements.money.type", "has money");
-                                        config.set("items." + key + ".left_click_requirement.requirements.money.amount", cs.getInt("PRICE"));
-                                        config.set("items." + key + ".right_click_requirement.requirements.money.type", "has money");
-                                        config.set("items." + key + ".right_click_requirement.requirements.money.amount", cs.getInt("PRICE"));
-                                        config.set("items." + key + ".left_click_commands", left_click_commands);
-                                        config.set("items." + key + ".right_click_commands", right_click_commands);
-                                    }
-
-                                    if (!cs.isSet("KEEP-OPEN") || !cs.getBoolean("KEEP-OPEN")) {
-                                        left_click_commands.add("[close]");
-                                        right_click_commands.add("[close]");
-
-                                        config.set("items." + key + ".left_click_commands", left_click_commands);
-                                        config.set("items." + key + ".right_click_commands", right_click_commands);
-                                    }
-
-                                    if (cs.isSet("REQUIRED-ITEM")) {
-                                        if (cs.getString("REQUIRED-ITEM").contains(":") && cs.getString("REQUIRED-ITEM").contains(",")) {
-                                            String material = cs.getString("REQUIRED-ITEM").split(":")[0];
-                                            int data = Integer.parseInt(cs.getString("REQUIRED-ITEM").split(",")[0].replace(material + ":", "").replaceAll(" ", ""));
-                                            int amount = Integer.parseInt(cs.getString("REQUIRED-ITEM").split(",")[1].replaceAll(" ", ""));
-
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",amt:" + amount + ",data:" + data + "%");
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",amt:" + amount + ",data:" + data + "%");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
-                                        } else if (cs.getString("REQUIRED-ITEM").contains(",")) {
-                                            String material = cs.getString("REQUIRED-ITEM").split(",")[0];
-                                            int amount = Integer.parseInt(cs.getString("REQUIRED-ITEM").split(",")[1].replaceAll(" ", ""));
-
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",amt:" + amount + "%");
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",amt:" + amount + "%");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
-                                        } else if (cs.getString("REQUIRED-ITEM").contains(":")) {
-                                            String material = cs.getString("REQUIRED-ITEM").split(":")[0];
-                                            int data = Integer.parseInt(cs.getString("REQUIRED-ITEM").split(":")[1].replaceAll(" ", ""));
-
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",data:" + data + "%");
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + ",data:" + data + "%");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
-                                        } else {
-                                            String material = cs.getString("REQUIRED-ITEM");
-
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.type", "string equals ignorecase");
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + "%");
-                                            config.set("items." + key + ".left_click_requirement.requirements.item.output", "yes");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.type", "string equals ignorecase");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.input", "%checkitem_mat:" + material.replaceAll(" ", "_").toUpperCase() + "%");
-                                            config.set("items." + key + ".right_click_requirement.requirements.item.output", "yes");
-                                        }
-                                    }
-
-                                    if (cs.isSet("PERMISSION-MESSAGE")) {
-                                        ArrayList<String> left_deny_commands = new ArrayList<>();
-                                        ArrayList<String> right_deny_commands = new ArrayList<>();
-
-                                        left_deny_commands.add("[message] " + formatText(cs.getString("PERMISSION-MESSAGE")));
-                                        right_deny_commands.add("[message] " + formatText(cs.getString("PERMISSION-MESSAGE")));
-
-                                        config.set("items." + key + ".left_click_requirement.deny_commands", left_deny_commands);
-                                        config.set("items." + key + ".right_click_requirement.deny_commands", right_deny_commands);
-                                    }
-                                }
-                            }
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                        }
-                    } else {
-                        sender.sendMessage(Messages.CHESTCOMMANDS_MENU_NOT_FOUND.ccFormat(menuName));
-                    }
-                } else {
-                    sender.sendMessage(Messages.CHESTCOMMANDS_DELUXEMENUS_USAGE.value());
-                }*/
             } else {
-                sender.sendMessage(Messages.UNKNOWN_COMMAND.value());
+                sender.sendMessage(Messages.CHESTCOMMANDS_MENU_NOT_FOUND.ccFormat(menuName));
             }
-
-        } else {
-            sender.sendMessage(Messages.NO_PERMISSION.value());
         }
     }
 

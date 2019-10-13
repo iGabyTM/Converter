@@ -49,10 +49,12 @@ public enum Messages {
     public String value() {
         return StringUtils.colorize(value.replaceAll("\\{version}", PLUGIN.getDescription().getVersion()));
     }
+
     public String ccFormat(String menu) {
         return StringUtils.colorize(value.replaceAll("\\{menu}", menu));
     }
+
     public String format(Long duration) {
-        return StringUtils.colorize(value.replace("\\{duration}", duration.toString()));
+        return StringUtils.colorize(value.replaceAll("\\{duration}", duration.toString()));
     }
 }
