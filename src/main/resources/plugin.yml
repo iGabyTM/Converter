@@ -1,0 +1,8 @@
+name: Converter
+version: ${project.version}
+main: me.gabytm.converter.Converter
+
+permissions:
+  convertor.access:
+    default: op
+    description: "The permission required to use the plugin"
