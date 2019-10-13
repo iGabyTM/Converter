@@ -30,12 +30,13 @@
             <plugin>
                 <groupId>org.apache.maven.plugins</groupId>
                 <artifactId>maven-shade-plugin</artifactId>
-                <version>3.1.0</version>
+                <version>3.2.1</version>
                 <configuration>
+                    <dependencyReducedPomLocation>${project.build.directory}/dependency-reduced-pom.xml</dependencyReducedPomLocation>
                     <relocations>
                         <relocation>
                             <pattern>me.mattstudios.mf</pattern>
-                            <shadedPattern>me.gabytm.converter.mf</shadedPattern>
+                            <shadedPattern>me.gabytm.converter.mf</shadedPattern> <!-- Replace here -->
                         </relocation>
                     </relocations>
                 </configuration>
@@ -45,9 +46,6 @@
                         <goals>
                             <goal>shade</goal>
                         </goals>
-                        <configuration>
-                            <minimizeJar>true</minimizeJar>
-                        </configuration>
                     </execution>
                 </executions>
             </plugin>

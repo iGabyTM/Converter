@@ -19,26 +19,40 @@
 
 package me.gabytm.converter.utils;
 
+import me.gabytm.converter.Converter;
+import org.bukkit.plugin.java.JavaPlugin;
+
 public enum Messages {
     NO_PERMISSION("&8[&4Converter&8] &cYou don't have the permission to use this command!"),
-    CHESTCOMMANDS_MENU_NOT_FOUND("&8[&4Converter&8] &cA menu named &7'&f%menu%&7' &cwas not found."),
+    CHESTCOMMANDS_MENU_NOT_FOUND("&8[&4Converter&8] &cA menu named &7'&f{menu}&7' &cwas not found."),
     CHESTCOMMANDS_DELUXEMENUS_USAGE("&8[&4Converter&8] &cUsage: &f/converter ChestCommands DeluxeMenus [menu]"),
-    CONVERTION_DONE("&8[&2Converter&8] &aDone! &7(%duration%ms)"),
+    CONVERTION_DONE("&8[&2Converter&8] &aDone! &7({duration}ms)"),
     CONVERTION_ERROR("&8[&4Converter&8] &cSomething went wrong, please check the console."),
+    HELP(" \n&6Convertor &ev{version} &fby &6GabyTM\n" +
+            " \n" +
+            "  &6ChestCommands &7to\n" +
+            "  &7- &6DeluxeMenus &e(menu)\n" +
+            " \n" +
+            "  &6QuickSell &7to\n" +
+            "  &7- &6AutoSell\n" +
+            " \n" +
+            "&fUsage: &6/convert [from] [to] &e(arguments)"),
+    INCORRECT_USAGE("&8[&4Converter&8] &cIncorrect usage. Type &f/converter help &cfor help."),
     QUICKSELL_NO_SHOPS_SECTION("&8[&4Converter&8] &cI could not locate the shops section in the QuickSell config!"),
     UNKNOWN_COMMAND("&8[&4Converter&8] &cUnknown command. Type &f/converter help &cfor help.");
 
     private String value;
+    private final JavaPlugin PLUGIN = JavaPlugin.getProvidingPlugin(Converter.class);
 
     Messages(String v) { this.value = v; }
 
     public String value() {
-        return StringUtils.colorize(value);
+        return StringUtils.colorize(value.replaceAll("\\{version}", PLUGIN.getDescription().getVersion()));
     }
     public String ccFormat(String menu) {
-        return StringUtils.colorize(value.replaceAll("%menu%", menu));
+        return StringUtils.colorize(value.replaceAll("\\{menu}", menu));
     }
     public String format(Long duration) {
-        return StringUtils.colorize(value.replace("%duration%", duration.toString()));
+        return StringUtils.colorize(value.replace("\\{duration}", duration.toString()));
     }
 }

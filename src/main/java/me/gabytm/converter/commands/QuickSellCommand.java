@@ -23,6 +23,7 @@ import me.gabytm.converter.Converter;
 import me.gabytm.converter.utils.Messages;
 import me.mattstudios.mf.annotations.Alias;
 import me.mattstudios.mf.annotations.Command;
+import me.mattstudios.mf.annotations.Permission;
 import me.mattstudios.mf.annotations.SubCommand;
 import me.mattstudios.mf.base.CommandBase;
 import org.bukkit.command.CommandSender;
@@ -42,69 +43,62 @@ public class QuickSellCommand extends CommandBase {
 
     @SubCommand("quicksell")
     @Alias("qs")
-    public void onCommand(CommandSender sender, String[] args) {
-        if (sender.hasPermission("convertor.access")) {
-            FileConfiguration config = plugin.getConfig();
+    @Permission("convertor.access")
+    public void onCommand(CommandSender sender, String pluginTo) {
+        FileConfiguration config = plugin.getConfig();
 
-            if (args.length >= 2) {
-                if (args[1].equalsIgnoreCase("AutoSell") || args[1].equalsIgnoreCase("AS")) {
-                    FileConfiguration qsConfig = YamlConfiguration.loadConfiguration(new File("plugins/QuickSell/config.yml"));
-                    long startTime = System.currentTimeMillis();
+        if (pluginTo.equalsIgnoreCase("AutoSell") || pluginTo.equalsIgnoreCase("AS")) {
+            FileConfiguration qsConfig = YamlConfiguration.loadConfiguration(new File("plugins/QuickSell/config.yml"));
+            long startTime = System.currentTimeMillis();
 
-                    if (qsConfig.isConfigurationSection("shops")) {
-                        try {
-                            for (String key : plugin.getConfig().getKeys(false)) {
-                                plugin.getConfig().set(key, null);
-                            }
-
-                            plugin.saveConfig();
-                            config.createSection("shops");
-
-                            int priority = qsConfig.getConfigurationSection("shops").getKeys(false).size() + 1;
-
-                            for (String key : qsConfig.getConfigurationSection("shops").getKeys(false)) {
-                                ArrayList<String> shopItems = new ArrayList<>();
-
-                                priority--;
-                                config.set("shops." + key + ".priority", priority);
-
-                                if (qsConfig.isConfigurationSection("shops." + key + ".price")) {
-                                    for (String item : qsConfig.getConfigurationSection("shops." + key + ".price").getKeys(false)) {
-                                        if (item.contains("-")) {
-                                            String[] material = item.split("-");
-
-                                            shopItems.add(material[0] + ";" + material[1] + "," + qsConfig.getInt("shops." + key + ".price." + item));
-                                        } else {
-                                            shopItems.add(item + "," + qsConfig.getInt("shops." + key + ".price." + item));
-                                        }
-                                    }
-
-                                    plugin.getLogger().info(colorize("&aThe shop '" + key + "' has been converted."));
-                                } else {
-                                    shopItems.add("");
-                                    plugin.getLogger().info(colorize("&cThe shop '" + key + "' has no items."));
-                                }
-
-                                config.set("shops." + key + ".shop_items", shopItems);
-                            }
-
-                            plugin.saveConfig();
-                            sender.sendMessage(Messages.CONVERTION_DONE.format(System.currentTimeMillis() - startTime));
-                        } catch (Exception e) {
-                            e.printStackTrace();
-                            sender.sendMessage(Messages.CONVERTION_ERROR.value());
-                        }
-                    } else {
-                        sender.sendMessage(Messages.QUICKSELL_NO_SHOPS_SECTION.value());
+            if (qsConfig.isConfigurationSection("shops")) {
+                try {
+                    for (String key : plugin.getConfig().getKeys(false)) {
+                        plugin.getConfig().set(key, null);
                     }
-                } else {
-                    sender.sendMessage(Messages.UNKNOWN_COMMAND.value());
+
+                    plugin.saveConfig();
+                    config.createSection("shops");
+
+                    int priority = qsConfig.getConfigurationSection("shops").getKeys(false).size() + 1;
+
+                    for (String key : qsConfig.getConfigurationSection("shops").getKeys(false)) {
+                        ArrayList<String> shopItems = new ArrayList<>();
+
+                        priority--;
+                        config.set("shops." + key + ".priority", priority);
+
+                        if (qsConfig.isConfigurationSection("shops." + key + ".price")) {
+                            for (String item : qsConfig.getConfigurationSection("shops." + key + ".price").getKeys(false)) {
+                                if (item.contains("-")) {
+                                    String[] material = item.split("-");
+
+                                    shopItems.add(material[0] + ";" + material[1] + "," + qsConfig.getInt("shops." + key + ".price." + item));
+                                } else {
+                                    shopItems.add(item + "," + qsConfig.getInt("shops." + key + ".price." + item));
+                                }
+                            }
+
+                            plugin.getLogger().info(colorize("&aThe shop '" + key + "' has been converted."));
+                        } else {
+                            shopItems.add("");
+                            plugin.getLogger().info(colorize("&cThe shop '" + key + "' has no items."));
+                        }
+
+                        config.set("shops." + key + ".shop_items", shopItems);
+                    }
+
+                    plugin.saveConfig();
+                    sender.sendMessage(Messages.CONVERTION_DONE.format(System.currentTimeMillis() - startTime));
+                } catch (Exception e) {
+                    e.printStackTrace();
+                    sender.sendMessage(Messages.CONVERTION_ERROR.value());
                 }
             } else {
-                sender.sendMessage(Messages.UNKNOWN_COMMAND.value());
+                sender.sendMessage(Messages.QUICKSELL_NO_SHOPS_SECTION.value());
             }
         } else {
-            sender.sendMessage(Messages.NO_PERMISSION.value());
+            sender.sendMessage(Messages.INCORRECT_USAGE.value());
         }
     }
 }
