@@ -44,14 +44,13 @@ public class ChestCommandsCommand extends CommandBase {
 
     public ChestCommandsCommand(Converter plugin) { this.plugin = plugin; }
 
-    @SuppressWarnings("Duplicates")
     @SubCommand("chestcommands")
     @Alias("cc")
     @Permission("convertor.access")
     public void onCommand(CommandSender sender, String pluginTo, String menu) {
         FileConfiguration config = plugin.getConfig();
 
-        if (pluginTo.equalsIgnoreCase("DeluxeMenus") || pluginTo.equalsIgnoreCase("DM")) {
+        if (pluginTo.equalsIgnoreCase("DeluxeMenus1") || pluginTo.equalsIgnoreCase("DM")) {
             String menuName = menu.toLowerCase().endsWith(".yml") ? menu : menu + ".yml";
             long startTime = System.currentTimeMillis();
             FileConfiguration ccConfig = YamlConfiguration.loadConfiguration(new File("plugins/ChestCommands/menu/" + menuName));
