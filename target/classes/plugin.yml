@@ -1,10 +1,6 @@
 name: Converter
-version: @version@
+version: 1.3
 main: me.gabytm.converter.Converter
-description: Convert configs from plugin to plugin easy
-api-version: '1.13'
-author: GabyTM
-website: https://gabytm.me/
 
 permissions:
   convertor.access:

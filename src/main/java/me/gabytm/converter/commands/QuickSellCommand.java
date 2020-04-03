@@ -21,10 +21,8 @@ package me.gabytm.converter.commands;
 
 import me.gabytm.converter.Converter;
 import me.gabytm.converter.utils.Messages;
-import me.mattstudios.mf.annotations.Alias;
-import me.mattstudios.mf.annotations.Command;
-import me.mattstudios.mf.annotations.Permission;
-import me.mattstudios.mf.annotations.SubCommand;
+import me.gabytm.converter.utils.StringUtil;
+import me.mattstudios.mf.annotations.*;
 import me.mattstudios.mf.base.CommandBase;
 import org.bukkit.command.CommandSender;
 import org.bukkit.configuration.file.FileConfiguration;
@@ -32,62 +30,83 @@ import org.bukkit.configuration.file.YamlConfiguration;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.Arrays;
+import java.util.Collections;
+import java.util.List;
 
-import static me.gabytm.converter.utils.StringUtils.colorize;
+import static me.gabytm.converter.utils.StringUtil.color;
 
 @Command("convert")
 public class QuickSellCommand extends CommandBase {
     private Converter plugin;
+    private FileConfiguration config;
 
-    public QuickSellCommand(Converter plugin) { this.plugin = plugin; }
+    public QuickSellCommand(Converter plugin) {
+        this.plugin = plugin;
+        config = plugin.getConfig();
+    }
+
+    @CompleteFor("quicksell")
+    public List<String> completion(final List<String> args) {
+        if (args.size() == 1) {
+            final List<String> pluginTo = Arrays.asList("AutoSell", "AS");
+            final List<String> completion = new ArrayList<>();
+
+            org.bukkit.util.StringUtil.copyPartialMatches(args.get(0), pluginTo, completion);
+            Collections.sort(completion);
+            return completion;
+        }
+
+        return Collections.emptyList();
+    }
 
     @SubCommand("quicksell")
-    @Alias("qs")
+    @Alias({ "QuickSell", "qs", "QS" })
     @Permission("convertor.access")
-    public void onCommand(CommandSender sender, String pluginTo) {
-        FileConfiguration config = plugin.getConfig();
-
-        if (!pluginTo.equalsIgnoreCase("AutoSell") || pluginTo.equalsIgnoreCase("AS")) {
-        	sender.sendMessage(Messages.INCORRECT_USAGE.value());
+    public void onCommand(final CommandSender sender, final String pluginTo) {
+        if (!pluginTo.equalsIgnoreCase("AutoSell") && !pluginTo.equalsIgnoreCase("AS")) {
+        	sender.sendMessage(Messages.INCORRECT_USAGE.getMessage());
         	return;
         }
-        FileConfiguration qsConfig = YamlConfiguration.loadConfiguration(new File("plugins/QuickSell/config.yml"));
-        long startTime = System.currentTimeMillis();
+
+        final FileConfiguration qsConfig = YamlConfiguration.loadConfiguration(new File("plugins/QuickSell/config.yml"));
+        final long startTime = System.currentTimeMillis();
+
         if (!qsConfig.isConfigurationSection("shops")) {
-        	sender.sendMessage(Messages.QUICKSELL_NO_SHOPS_SECTION.value());
+        	sender.sendMessage(Messages.QUICKSELL_NO_SHOPS_SECTION.getMessage());
         	return;
         }
-        try {
-            for (String key : plugin.getConfig().getKeys(false)) {
-                plugin.getConfig().set(key, null);
-            }
 
+        try {
+            plugin.emptyConfig();
             plugin.saveConfig();
             config.createSection("shops");
 
             int priority = qsConfig.getConfigurationSection("shops").getKeys(false).size() + 1;
 
             for (String key : qsConfig.getConfigurationSection("shops").getKeys(false)) {
-                ArrayList<String> shopItems = new ArrayList<>();
+                final List<String> shopItems = new ArrayList<>();
 
                 priority--;
                 config.set("shops." + key + ".priority", priority);
 
                 if (!qsConfig.isConfigurationSection("shops." + key + ".price")) {
                 	shopItems.add("");
-                    plugin.getLogger().info(colorize("&cThe shop '" + key + "' has no items."));
+                    plugin.getLogger().info(color("&cThe shop '" + key + "' has no items."));
                 }
+
                 for (String item : qsConfig.getConfigurationSection("shops." + key + ".price").getKeys(false)) {
                 	if (!item.contains("-")) {
                 		shopItems.add(item + "," + qsConfig.getInt("shops." + key + ".price." + item));
+                		continue;
                 	}
-                    String[] material = item.split("-");
+
+                    final String[] material = item.split("-");
 
                     shopItems.add(material[0] + ";" + material[1] + "," + qsConfig.getInt("shops." + key + ".price." + item));
                 }
 
-                plugin.getLogger().info(colorize("&aThe shop '" + key + "' has been converted."));
-
+                plugin.getLogger().info(StringUtil.color("&aThe shop '" + key + "' has been converted."));
                 config.set("shops." + key + ".shop_items", shopItems);
             }
 
@@ -95,7 +114,7 @@ public class QuickSellCommand extends CommandBase {
             sender.sendMessage(Messages.CONVERTION_DONE.format(System.currentTimeMillis() - startTime));
         } catch (Exception e) {
             e.printStackTrace();
-            sender.sendMessage(Messages.CONVERTION_ERROR.value());
+            sender.sendMessage(Messages.CONVERTION_ERROR.getMessage());
         }
     }
 }

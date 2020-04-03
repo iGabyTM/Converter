@@ -1,0 +1,39 @@
+import org.apache.tools.ant.filters.ReplaceTokens
+
+plugins {
+    id 'java'
+    id 'com.github.johnrengelman.shadow' version '5.2.0'
+}
+
+group 'me.gabytm'
+version '1.0.3'
+
+sourceCompatibility = JavaVersion.VERSION_1_8
+
+repositories {
+    mavenCentral()
+
+    maven({ url 'https://hub.spigotmc.org/nexus/content/repositories/snapshots/' })
+    maven({ url 'https://oss.sonatype.org/content/repositories/snapshots/' })
+}
+
+dependencies {
+    implementation 'me.mattstudios.utils:matt-framework:1.3'
+    compileOnly 'org.spigotmc:spigot-api:1.12.2-R0.1-SNAPSHOT'
+}
+
+compileJava {
+    options.encoding = "UTF-8"
+}
+
+processResources {
+    from(sourceSets.main.resources.srcDirs) {
+        filter ReplaceTokens, tokens: [version: version]
+    }
+}
+
+shadowJar {
+    archiveFileName = "Converter [${project.version}].jar"
+    relocate 'me.mattstudios.mf', 'me.gabytm.converter.libs.mf'
+    //destinationDir file("D:/Projects/MinecraftServers/1.8.8/plugins")
+}

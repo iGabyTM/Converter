@@ -21,6 +21,8 @@ package me.gabytm.converter.utils;
 
 import org.bukkit.ChatColor;
 
-public class StringUtils {
-    public static String colorize(String text) { return ChatColor.translateAlternateColorCodes('&', text); }
+public class StringUtil {
+    public static String color(String text) {
+        return ChatColor.translateAlternateColorCodes('&', text);
+    }
 }

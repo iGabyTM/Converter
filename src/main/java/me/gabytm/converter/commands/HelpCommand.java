@@ -26,16 +26,17 @@ import org.bukkit.command.CommandSender;
 
 @Command("convert")
 public class HelpCommand extends CommandBase {
+
     @Default
     @Permission("converter.access")
     public void onCommand(CommandSender sender) {
-        sender.sendMessage(Messages.HELP.value());
+        sender.sendMessage(Messages.HELP.getMessage());
     }
 
     @SubCommand("help")
     @Alias("?")
     @Permission("converter.access")
-    public void helpCommand(CommandSender sender) {
-        sender.sendMessage(Messages.HELP.value());
+    public void onHelpCommand(CommandSender sender) {
+        sender.sendMessage(Messages.HELP.getMessage());
     }
 }

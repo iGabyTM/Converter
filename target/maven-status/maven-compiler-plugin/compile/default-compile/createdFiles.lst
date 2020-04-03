@@ -1,0 +1,6 @@
+me\gabytm\converter\commands\ChestCommandsCommand.class
+me\gabytm\converter\commands\HelpCommand.class
+me\gabytm\converter\utils\StringUtil.class
+me\gabytm\converter\utils\Messages.class
+me\gabytm\converter\Converter.class
+me\gabytm\converter\commands\QuickSellCommand.class

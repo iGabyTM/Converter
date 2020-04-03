@@ -1,0 +1,7 @@
+# Plugins config converter made by GabyTM (https://www.spigotmc.org/members/386419/)
+
+# Currently support converting from - ChestCommand to DeluxeMenus (external menu)
+#                                   - QuickSell to AutoSell
+
+# Please keep in mind that the plugin only convert from a format to another but doesn't
+# update the materials, sounds or enchantments names

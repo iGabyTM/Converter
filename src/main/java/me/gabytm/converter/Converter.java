@@ -19,40 +19,28 @@
 
 package me.gabytm.converter;
 
-import me.gabytm.converter.commands.ChestCommandsCommand;
-import me.gabytm.converter.commands.DefaultCommand;
-import me.gabytm.converter.commands.HelpCommand;
-import me.gabytm.converter.commands.QuickSellCommand;
+import me.gabytm.converter.commands.*;
 import me.gabytm.converter.utils.Messages;
 import me.mattstudios.mf.base.CommandManager;
-import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.plugin.java.JavaPlugin;
 
 public final class Converter extends JavaPlugin {
-    private FileConfiguration config = getConfig();
-    private CommandManager commandManager;
-
     @Override
     public void onEnable() {
-        config.options().copyDefaults(true);
-        this.saveConfig();
+        CommandManager commandManager = new CommandManager(this);
 
-        commandManager = new CommandManager(this);
+        saveDefaultConfig();
+
         commandManager.register(new ChestCommandsCommand(this));
-        commandManager.register(new DefaultCommand());
         commandManager.register(new HelpCommand());
         commandManager.register(new QuickSellCommand(this));
 
-        commandManager.getMessageHandler().register("cmd.wrong.usage", sender -> {
-            sender.sendMessage(Messages.INCORRECT_USAGE.value());
-        });
+        commandManager.getMessageHandler().register("cmd.wrong.usage", sender -> sender.sendMessage(Messages.INCORRECT_USAGE.getMessage()));
+        commandManager.getMessageHandler().register("cmd.no.exists", sender -> sender.sendMessage(Messages.UNKNOWN_COMMAND.getMessage()));
+        commandManager.getMessageHandler().register("cmd.no.permission", sender -> sender.sendMessage(Messages.NO_PERMISSION.getMessage()));
+    }
 
-        commandManager.getMessageHandler().register("cmd.no.exists", sender -> {
-            sender.sendMessage(Messages.UNKNOWN_COMMAND.value());
-        });
-
-        commandManager.getMessageHandler().register("cmd.no.permission", sender -> {
-            sender.sendMessage(Messages.NO_PERMISSION.value());
-        });
+    public void emptyConfig() {
+        getConfig().getKeys(false).forEach(k -> getConfig().get(k, null));
     }
 }
