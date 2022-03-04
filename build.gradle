@@ -1,0 +1,13 @@
+plugins {
+    id 'java'
+}
+
+group 'me.gabytm.minecraft'
+version '2.0.0'
+
+subprojects {
+
+    group this.group
+    version this.version
+
+}
