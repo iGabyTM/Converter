@@ -1,3 +1,4 @@
 dependencies {
     implementation 'org.spongepowered:configurate-yaml:4.1.2'
+    implementation 'org.apache.commons:commons-text:1.9'
 }
