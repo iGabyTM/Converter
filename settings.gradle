@@ -1,2 +1,2 @@
 rootProject.name = 'converter'
-include(':ui')
+include(':converter', ':ui')
