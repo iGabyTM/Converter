@@ -7,7 +7,13 @@ version '2.0.0'
 
 subprojects {
 
+    apply plugin: 'java'
+
     group this.group
     version this.version
+
+    repositories {
+        mavenCentral()
+    }
 
 }
