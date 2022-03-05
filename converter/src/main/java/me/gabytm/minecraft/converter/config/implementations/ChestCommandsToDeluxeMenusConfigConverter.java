@@ -11,6 +11,8 @@ import java.util.Map;
 import java.util.Objects;
 import java.util.stream.Collectors;
 
+import static org.spongepowered.configurate.NodePath.path;
+
 public class ChestCommandsToDeluxeMenusConfigConverter extends ConfigConverter {
 
     private static final int SLOTS_PER_ROW = 9;
@@ -82,11 +84,15 @@ public class ChestCommandsToDeluxeMenusConfigConverter extends ConfigConverter {
                     output.node("open_commands").setList(String.class, convertActions(openActions.getList(String.class)));
                 }
             });
+            convertList(String.class, settings, path("open-actions"), output, path("open_commands"), this::convertActions);
         });
     }
 
     private void convertItems(final CommentedConfigurationNode input, final CommentedConfigurationNode output) throws SerializationException {
-        output.node("material").set(String.class, input.node("MATERIAL").getString().toUpperCase().replace(" ", "_"));
+        convertString(
+                input, path("MATERIAL"), output, path("material"),
+                material -> material.toUpperCase().replace(" ", "_")
+        );
         input.node("DURABILITY").act(durability -> {
             if (!durability.empty()) {
                 output.node("data").set(Short.class, (short) durability.getInt());
@@ -94,39 +100,24 @@ public class ChestCommandsToDeluxeMenusConfigConverter extends ConfigConverter {
         });
         output.node("amount").set(Integer.class, Math.max(1, input.node("AMOUNT").getInt()));
         output.node("slot").set(Integer.class, convertSlot(input.node("POSITION-X").getInt(), input.node("POSITION-Y").getInt()));
-        input.node("COLOR").act(color -> {
-            if (!color.empty()) {
-                output.node("rgb").set(String.class, color.getString().replace(" ", ""));
-            }
-        });
-        input.node("NAME").act(name -> {
-            if (!name.empty()) {
-                output.node("display_name").set(String.class, convertPlaceholders(name.getString()));
-            }
-        });
-        input.node("LORE").act(lore -> {
-            if (!lore.empty()) {
-                output.node("lore").setList(String.class, lore.getList(String.class).stream().map(this::convertPlaceholders).collect(Collectors.toList()));
-            }
-        });
-        input.node("BANNER-PATTERNS").act(patterns -> {
-           if (!patterns.empty()) {
-               final var list = patterns.getList(String.class).stream()
-                       .map(String::toUpperCase)
-                       .map(it -> {
-                           final var parts = it.split(":");
-                           return (parts.length == 2) ? parts[1] + ';' + parts[0] : null;
-                       })
-                       .filter(Objects::nonNull)
-                       .collect(Collectors.toList());
-               output.node("banner_meta").setList(String.class, list);
-           }
-        });
-        input.node("ACTIONS").act(actions -> {
-            if (!actions.empty()) {
-                output.node("click_actions").setList(String.class, convertActions(actions.getList(String.class)));
-            }
-        });
+        convertString(input, path("COLOR"), output, path("rgb"), color -> color.replace(" ", ""));
+        convertString(input, path("NAME"), output, path("name"), this::convertPlaceholders);
+        convertList(
+                String.class, input, path("LORE"), output, path("lore"),
+                lore -> lore.stream().map(this::convertPlaceholders).collect(Collectors.toList())
+        );
+        convertList(
+                String.class, input, path("BANNER-PATTERNS"), output, path("banner_meta"),
+                list -> list.stream()
+                        .map(String::toUpperCase)
+                        .map(it -> {
+                            final var parts = it.split(":");
+                            return (parts.length == 2) ? parts[1] + ';' + parts[0] : null;
+                        })
+                        .filter(Objects::nonNull)
+                        .collect(Collectors.toList())
+        );
+        convertList(String.class, input, path("ACTIONS"), output, path("click_actions"), this::convertActions);
     }
 
     @Override

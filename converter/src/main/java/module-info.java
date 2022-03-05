@@ -2,6 +2,7 @@ module converter.converter.main {
     requires java.base;
     requires java.sql;
     requires org.apache.commons.lang3;
+    requires org.jetbrains.annotations;
     requires org.spongepowered.configurate;
     requires org.spongepowered.configurate.yaml;
 

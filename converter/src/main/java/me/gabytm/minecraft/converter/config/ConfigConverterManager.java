@@ -33,13 +33,13 @@ public class ConfigConverterManager {
     }
 
     public void convert(final File file, final String source, final String target) {
-        final var f = new File(target, file.getName());
+        final var out = new File(target, file.getName());
 
-        if (!f.exists()) {
-            f.getParentFile().mkdirs();
+        if (!out.exists()) {
+            out.getParentFile().mkdirs();
 
             try {
-                f.createNewFile();
+                out.createNewFile();
             } catch (IOException e) {
                 e.printStackTrace();
             }
@@ -50,7 +50,7 @@ public class ConfigConverterManager {
                     .file(file)
                     .build();
             final var targetLoader = YamlConfigurationLoader.builder()
-                    .file(f)
+                    .file(out)
                     .indent(2)
                     .nodeStyle(NodeStyle.BLOCK)
                     .build();
