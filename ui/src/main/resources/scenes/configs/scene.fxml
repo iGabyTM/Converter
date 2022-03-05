@@ -1,0 +1,21 @@
+<?xml version="1.0" encoding="UTF-8"?>
+
+<?import javafx.scene.control.Button?>
+<?import javafx.scene.control.ListView?>
+<?import javafx.scene.layout.AnchorPane?>
+<?import javafx.scene.layout.VBox?>
+<?import javafx.scene.text.Text?>
+
+
+<VBox maxHeight="-Infinity" maxWidth="-Infinity" minHeight="-Infinity" minWidth="-Infinity" prefHeight="400.0" prefWidth="600.0" xmlns="http://javafx.com/javafx/17" xmlns:fx="http://javafx.com/fxml/1" fx:controller="me.gabytm.minecraft.converter.ui.controls.ConfigsSceneController">
+   <children>
+      <AnchorPane prefHeight="400.0" prefWidth="600.0">
+         <children>
+            <ListView fx:id="sourceSelector" layoutX="46.0" layoutY="100.0" prefHeight="200.0" prefWidth="200.0" />
+            <ListView fx:id="targetSelector" layoutX="354.0" layoutY="100.0" prefHeight="200.0" prefWidth="200.0" />
+            <Button fx:id="convertButton" layoutX="271.0" layoutY="188.0" mnemonicParsing="false" text="Convert" textFill="#46c978" />
+            <Text fx:id="label" fill="RED" layoutX="289.0" layoutY="60.0" strokeType="OUTSIDE" strokeWidth="0.0" text="Text" textOrigin="CENTER" />
+         </children>
+      </AnchorPane>
+   </children>
+</VBox>
