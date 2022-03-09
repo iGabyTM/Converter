@@ -6,5 +6,4 @@ module converter.ui {
 
     opens me.gabytm.minecraft.converter.ui to javafx.graphics;
     opens me.gabytm.minecraft.converter.ui.controls to javafx.fxml;
-    //test
 }
